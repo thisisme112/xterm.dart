@@ -507,13 +507,21 @@ class RenderTerminal extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
     Offset offset,
   ) {
     if (_terminal.buffer.lines.length == 0) return;
-    final absoluteStartIndex = _terminal.buffer.lines[0].index;
+    final absoluteStartIndex = _terminal.buffer.lines.absoluteStartIndex;
 
     for (final segment in selection.toSegments()) {
       final relativeLine = segment.line - absoluteStartIndex;
 
       if (relativeLine < 0 || relativeLine >= _terminal.buffer.lines.length) {
         continue;
+      }
+
+      if (relativeLine < firstLine) {
+        continue;
+      }
+
+      if (relativeLine > lastLine) {
+        break;
       }
 
       _paintSegment(
@@ -529,7 +537,7 @@ class RenderTerminal extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
     Offset offset,
   ) {
     if (_terminal.buffer.lines.length == 0) return;
-    final absoluteStartIndex = _terminal.buffer.lines[0].index;
+    final absoluteStartIndex = _terminal.buffer.lines.absoluteStartIndex;
 
     for (var highlight in _controller.highlights) {
       final range = highlight.range?.normalized;
@@ -543,6 +551,14 @@ class RenderTerminal extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
 
         if (relativeLine < 0 || relativeLine >= _terminal.buffer.lines.length) {
           continue;
+        }
+
+        if (relativeLine < firstLine) {
+          continue;
+        }
+
+        if (relativeLine > lastLine) {
+          break;
         }
 
         _paintSegment(canvas, segment, relativeLine, offset, highlight.color);

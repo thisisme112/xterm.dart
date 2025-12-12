@@ -18,6 +18,12 @@ class IndexAwareCircularBuffer<T extends IndexedItem> {
   /// overflow
   var _absoluteStartIndex = 0;
 
+  /// Absolute index of the first element currently stored in this buffer.
+  ///
+  /// This value monotonically increases as old elements are dropped when the
+  /// buffer overflows.
+  int get absoluteStartIndex => _absoluteStartIndex;
+
   /// Gets the cyclic index for the specified regular index. The cyclic index
   /// can then be used on the backing array to get the element associated with
   /// the regular index.
