@@ -454,6 +454,7 @@ class RenderTerminal extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
       _controller.highlights,
       effectFirstLine,
       effectLastLine,
+      offset,
     );
 
     if (_controller.selection != null) {
@@ -462,6 +463,7 @@ class RenderTerminal extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
         _controller.selection!,
         effectFirstLine,
         effectLastLine,
+        offset,
       );
     }
   }
@@ -502,6 +504,7 @@ class RenderTerminal extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
     BufferRange selection,
     int firstLine,
     int lastLine,
+    Offset offset,
   ) {
     final absoluteStartIndex = _terminal.buffer.lines[0].index;
 
@@ -520,7 +523,7 @@ class RenderTerminal extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
         break;
       }
 
-      _paintSegment(canvas, segment, relativeLine, _painter.theme.selection);
+      _paintSegment(canvas, segment, relativeLine, offset, _painter.theme.selection);
     }
   }
 
@@ -529,6 +532,7 @@ class RenderTerminal extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
     List<TerminalHighlight> highlights,
     int firstLine,
     int lastLine,
+    Offset offset,
   ) {
     final absoluteStartIndex = _terminal.buffer.lines[0].index;
 
@@ -552,7 +556,7 @@ class RenderTerminal extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
           break;
         }
 
-        _paintSegment(canvas, segment, relativeLine, highlight.color);
+        _paintSegment(canvas, segment, relativeLine, offset, highlight.color);
       }
     }
   }
@@ -562,6 +566,7 @@ class RenderTerminal extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
     Canvas canvas,
     BufferSegment segment,
     int lineIndex,
+    Offset offset,
     Color color,
   ) {
     final start = segment.start ?? 0;
@@ -570,7 +575,7 @@ class RenderTerminal extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
     final startOffset = Offset(
       start * _painter.cellSize.width,
       lineIndex * _painter.cellSize.height + _lineOffset,
-    );
+    ) + offset;
 
     _painter.paintHighlight(canvas, startOffset, end - start, color);
   }
