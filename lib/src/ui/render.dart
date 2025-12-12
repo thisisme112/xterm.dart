@@ -247,10 +247,15 @@ class RenderTerminal extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
     final y = offset.dy - _padding.top + _scrollOffset;
     final row = y ~/ _painter.cellSize.height;
     final col = x ~/ _painter.cellSize.width;
-    return CellOffset(
-      col.clamp(0, _terminal.viewWidth - 1),
-      row.clamp(0, _terminal.buffer.lines.length - 1),
-    );
+
+    // 修复: 确保返回的CellOffset始终在有效范围内，避免滚动时选区失效
+    // 这解决了当向下滚动后拖动选择时的选区bug
+    final maxRow = max(0, _terminal.buffer.lines.length - 1).toInt();
+    final maxCol = max(0, _terminal.viewWidth - 1).toInt();
+    final clampedRow = row.clamp(0, maxRow);
+    final clampedCol = col.clamp(0, maxCol);
+
+    return CellOffset(clampedCol, clampedRow);
   }
 
   /// Selects entire words in the terminal that contains [from] and [to].
@@ -288,6 +293,13 @@ class RenderTerminal extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
       );
     } else {
       var toPosition = getCellOffset(to);
+      // 修复: 确保toPosition的有效性，避免滚动时选区超出范围导致无法选择
+      // 如果toPosition超出缓冲区范围，将其限制在有效范围内
+      toPosition = CellOffset(
+        toPosition.x.clamp(0, _terminal.viewWidth - 1),
+        toPosition.y.clamp(0, _terminal.buffer.lines.length - 1),
+      );
+
       if (toPosition.x >= fromPosition.x) {
         toPosition = CellOffset(toPosition.x + 1, toPosition.y);
       }
@@ -491,20 +503,24 @@ class RenderTerminal extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
     int firstLine,
     int lastLine,
   ) {
+    final absoluteStartIndex = _terminal.buffer.lines[0].index;
+
     for (final segment in selection.toSegments()) {
-      if (segment.line >= _terminal.buffer.lines.length) {
+      final relativeLine = segment.line - absoluteStartIndex;
+
+      if (relativeLine >= _terminal.buffer.lines.length) {
         break;
       }
 
-      if (segment.line < firstLine) {
+      if (relativeLine < firstLine) {
         continue;
       }
 
-      if (segment.line > lastLine) {
+      if (relativeLine > lastLine) {
         break;
       }
 
-      _paintSegment(canvas, segment, _painter.theme.selection);
+      _paintSegment(canvas, segment, relativeLine, _painter.theme.selection);
     }
   }
 
@@ -514,37 +530,46 @@ class RenderTerminal extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
     int firstLine,
     int lastLine,
   ) {
+    final absoluteStartIndex = _terminal.buffer.lines[0].index;
+
     for (var highlight in _controller.highlights) {
       final range = highlight.range?.normalized;
 
       if (range == null ||
-          range.begin.y > lastLine ||
-          range.end.y < firstLine) {
+          range.begin.y - absoluteStartIndex > lastLine ||
+          range.end.y - absoluteStartIndex < firstLine) {
         continue;
       }
 
       for (var segment in range.toSegments()) {
-        if (segment.line < firstLine) {
+        final relativeLine = segment.line - absoluteStartIndex;
+
+        if (relativeLine < firstLine) {
           continue;
         }
 
-        if (segment.line > lastLine) {
+        if (relativeLine > lastLine) {
           break;
         }
 
-        _paintSegment(canvas, segment, highlight.color);
+        _paintSegment(canvas, segment, relativeLine, highlight.color);
       }
     }
   }
 
   @pragma('vm:prefer-inline')
-  void _paintSegment(Canvas canvas, BufferSegment segment, Color color) {
+  void _paintSegment(
+    Canvas canvas,
+    BufferSegment segment,
+    int lineIndex,
+    Color color,
+  ) {
     final start = segment.start ?? 0;
     final end = segment.end ?? _terminal.viewWidth;
 
     final startOffset = Offset(
       start * _painter.cellSize.width,
-      segment.line * _painter.cellSize.height + _lineOffset,
+      lineIndex * _painter.cellSize.height + _lineOffset,
     );
 
     _painter.paintHighlight(canvas, startOffset, end - start, color);
